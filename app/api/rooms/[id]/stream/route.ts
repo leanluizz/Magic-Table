@@ -1,4 +1,4 @@
-import { getRoom, serializeState, subscribe } from '@/lib/game-store'
+import { deleteRoom, getRoom, serializeState, subscribe } from '@/lib/game-store'
 import type { ClientState } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
@@ -41,6 +41,12 @@ export async function GET(
     cancel() {
       unsubscribe?.()
       if (keepAlive) clearInterval(keepAlive)
+      // Apaga a sala quando o último jogador desconectar
+      const store = (globalThis as unknown as { __mtgStore?: { subscribers: Map<string, Set<unknown>> } }).__mtgStore
+      const remaining = store?.subscribers.get(id.toUpperCase())?.size ?? 0
+      if (remaining === 0) {
+        deleteRoom(id)
+      }
     },
   })
 

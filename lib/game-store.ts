@@ -47,13 +47,14 @@ function shuffle<T>(arr: T[]): T[] {
   return a
 }
 
-export function createRoom(): Room {
+export function createRoom(isPublic = false): Room {
   const store = getStore()
   let id = generateRoomCode()
   while (store.rooms.has(id)) id = generateRoomCode()
   const room: Room = {
     id,
     status: 'lobby',
+    isPublic,
     players: [],
     cards: [],
     libraries: {},
@@ -95,6 +96,7 @@ export function serializeState(room: Room, playerId: string): ClientState {
   return {
     roomId: room.id,
     status: room.status,
+    isPublic: room.isPublic,
     playerId,
     players: room.players.map((p) => ({
       id: p.id,
@@ -111,6 +113,24 @@ export function serializeState(room: Room, playerId: string): ClientState {
     })),
     cards: visibleCards,
   }
+}
+
+export function listPublicRooms(): { id: string; players: number; status: string; createdAt: number }[] {
+  const store = getStore()
+  const result: { id: string; players: number; status: string; createdAt: number }[] = []
+  for (const room of store.rooms.values()) {
+    if (room.isPublic && room.status === 'lobby' && room.players.length < 4) {
+      result.push({ id: room.id, players: room.players.length, status: room.status, createdAt: room.createdAt })
+    }
+  }
+  return result.sort((a, b) => b.createdAt - a.createdAt)
+}
+
+export function deleteRoom(roomId: string) {
+  const store = getStore()
+  const key = roomId.toUpperCase()
+  store.rooms.delete(key)
+  store.subscribers.delete(key)
 }
 
 export function subscribe(
@@ -172,6 +192,7 @@ function buildLibrary(room: Room, player: Player) {
         y: 50,
         tapped: false,
         faceDown: false,
+        typeLine: deckCard.typeLine,
       })
     }
   }
@@ -204,8 +225,8 @@ export function applyAction(
     case 'start-game': {
       if (room.status === 'playing') break
       const readyPlayers = room.players.filter((p) => p.ready)
-      if (readyPlayers.length < 2)
-        return { ok: false, error: 'São necessários ao menos 2 jogadores prontos' }
+      if (readyPlayers.length < 1)
+        return { ok: false, error: 'Ao menos 1 jogador precisa estar pronto' }
       room.status = 'playing'
       room.players = room.players.filter((p) => p.ready)
       room.players.forEach((p, i) => {

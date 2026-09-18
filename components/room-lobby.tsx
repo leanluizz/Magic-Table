@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { DeckBuilder } from '@/components/deck-builder'
 import type { ClientState, DeckCard, GameAction } from '@/lib/types'
@@ -13,24 +14,40 @@ interface RoomLobbyProps {
 }
 
 export function RoomLobby({ state, connected, error, sendAction }: RoomLobbyProps) {
+  const router = useRouter()
   const [deck, setDeck] = useState<DeckCard[]>([])
   const me = state.players.find((p) => p.id === state.playerId)
   const deckSize = deck.reduce((s, c) => s + c.quantity, 0)
   const isReady = me?.ready ?? false
   const readyCount = state.players.filter((p) => p.ready).length
+  const isSolo = state.players.length === 1
 
   async function handleDeckChange(next: DeckCard[]) {
     setDeck(next)
     await sendAction({ type: 'set-deck', deck: next })
   }
 
+  async function handleStartSolo() {
+    await sendAction({ type: 'set-deck', deck })
+    await sendAction({ type: 'toggle-ready' })
+    await sendAction({ type: 'start-game' })
+  }
+
+  function handleLeaveRoom() {
+    router.push('/')
+  }
+
   return (
     <main className="mx-auto flex min-h-svh w-full max-w-6xl flex-col gap-6 px-4 py-8">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold tracking-tight">Sala de espera</h1>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {isSolo ? 'Mesa de teste' : 'Sala de espera'}
+          </h1>
           <p className="text-sm text-muted-foreground">
-            Compartilhe o código com seus amigos (até 4 jogadores)
+            {isSolo
+              ? 'Modo solo — monte seu deck e inicie a partida'
+              : 'Compartilhe o código com seus amigos (até 4 jogadores)'}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -41,6 +58,15 @@ export function RoomLobby({ state, connected, error, sendAction }: RoomLobbyProp
           <span className="rounded-lg border border-border bg-card px-4 py-2 font-mono text-xl font-bold tracking-[0.3em] text-primary">
             {state.roomId}
           </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleLeaveRoom}
+            className="ml-2 text-muted-foreground hover:text-destructive"
+            aria-label="Sair da sala"
+          >
+            ← Sair
+          </Button>
         </div>
       </header>
 
@@ -51,11 +77,10 @@ export function RoomLobby({ state, connected, error, sendAction }: RoomLobbyProp
           return (
             <div
               key={i}
-              className={`flex flex-col items-center gap-1 rounded-xl border p-4 ${
-                player
+              className={`flex flex-col items-center gap-1 rounded-xl border p-4 ${player
                   ? 'border-border bg-card'
                   : 'border-dashed border-border/60 bg-transparent'
-              }`}
+                }`}
             >
               {player ? (
                 <>
@@ -64,9 +89,8 @@ export function RoomLobby({ state, connected, error, sendAction }: RoomLobbyProp
                     {player.id === state.playerId && ' (você)'}
                   </span>
                   <span
-                    className={`text-xs font-medium ${
-                      player.ready ? 'text-primary' : 'text-muted-foreground'
-                    }`}
+                    className={`text-xs font-medium ${player.ready ? 'text-primary' : 'text-muted-foreground'
+                      }`}
                   >
                     {player.ready
                       ? `Pronto · ${player.deckCount} cartas`
@@ -87,24 +111,43 @@ export function RoomLobby({ state, connected, error, sendAction }: RoomLobbyProp
 
       {/* Ações */}
       <section className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-4">
-        <Button
-          onClick={() => sendAction({ type: 'toggle-ready' })}
-          disabled={deckSize < 7}
-          variant={isReady ? 'secondary' : 'default'}
-          className="font-semibold"
-        >
-          {isReady ? 'Cancelar pronto' : 'Estou pronto'}
-        </Button>
-        <Button
-          onClick={() => sendAction({ type: 'start-game' })}
-          disabled={readyCount < 2}
-          variant="outline"
-        >
-          Iniciar partida ({readyCount}/{state.players.length} prontos)
-        </Button>
-        <p className="text-sm text-muted-foreground">
-          Ao iniciar, cada jogador embaralha o deck e compra 7 cartas.
-        </p>
+        {isSolo ? (
+          <>
+            <Button
+              onClick={handleStartSolo}
+              disabled={deckSize < 7}
+              className="font-semibold"
+            >
+              Iniciar partida de teste
+            </Button>
+            <p className="text-sm text-muted-foreground">
+              {deckSize < 7
+                ? `Adicione ao menos 7 cartas para iniciar (${deckSize}/7)`
+                : 'Pronto! Clique para iniciar a mesa de teste solo.'}
+            </p>
+          </>
+        ) : (
+          <>
+            <Button
+              onClick={() => sendAction({ type: 'toggle-ready' })}
+              disabled={deckSize < 7}
+              variant={isReady ? 'secondary' : 'default'}
+              className="font-semibold"
+            >
+              {isReady ? 'Cancelar pronto' : 'Estou pronto'}
+            </Button>
+            <Button
+              onClick={() => sendAction({ type: 'start-game' })}
+              disabled={readyCount < 2}
+              variant="outline"
+            >
+              Iniciar partida ({readyCount}/{state.players.length} prontos)
+            </Button>
+            <p className="text-sm text-muted-foreground">
+              Ao iniciar, cada jogador embaralha o deck e compra 7 cartas.
+            </p>
+          </>
+        )}
         {error && (
           <p role="alert" className="w-full text-sm text-destructive">
             {error}

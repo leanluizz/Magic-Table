@@ -65,3 +65,13 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Ocultar barras de rolagem mantendo a funcionalidade de scroll */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+

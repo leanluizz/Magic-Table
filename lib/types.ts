@@ -5,6 +5,7 @@ export interface DeckCard {
   name: string
   image: string
   quantity: number
+  typeLine?: string
 }
 
 export interface CardInstance {
@@ -19,6 +20,7 @@ export interface CardInstance {
   y: number
   tapped: boolean
   faceDown: boolean
+  typeLine?: string
 }
 
 /** Carta oculta (mão de outro jogador) */
@@ -42,6 +44,7 @@ export interface Player {
 export interface Room {
   id: string
   status: 'lobby' | 'playing'
+  isPublic: boolean
   players: Player[]
   cards: CardInstance[]
   /** Ordem das bibliotecas: playerId -> ids das cartas (topo primeiro) */
@@ -65,6 +68,7 @@ export interface PublicPlayer {
 export interface ClientState {
   roomId: string
   status: 'lobby' | 'playing'
+  isPublic: boolean
   playerId: string
   players: PublicPlayer[]
   /** Cartas visíveis: campo, cemitérios, exílios e a própria mão */
